@@ -5,14 +5,16 @@ Bu servis, mobil uygulamanın fotoğrafla öğrenme akışındaki iki modeli gü
 ```text
 Mobil uygulama → Gateway → Gemini Vision → yapılandırılmış görünür bağlam
                                   ↓
-                         Scenario AI (OpenAI Responses API)
+                      Gemini Scenario Agent (veya OpenAI Responses API)
                                   ↓
                  seviyeye ve İngilizce İkizi'ne uygun geniş senaryo
 ```
 
 ## Neden iki model?
 
-Gemini yalnızca fotoğrafta görünür olarak desteklenen nesneleri, ilişkileri ve belirsizlikleri JSON olarak döndürür. İkinci model fotoğrafı yeniden görmez; bu doğrulanmış analizi kullanarak, fotoğrafın bağlamına bağlı ama daha geniş bir günlük yaşam senaryosu yazar. Böylece ikinci aşama "görüntüde olmayan" bir ayrıntıyı kesin gerçek gibi kuramaz.
+Gemini Vision yalnızca fotoğrafta görünür olarak desteklenen nesneleri, ilişkileri ve belirsizlikleri JSON olarak döndürür. İkinci ajan fotoğrafı yeniden görmez; bu doğrulanmış analizi kullanarak, fotoğrafın bağlamına bağlı ama daha geniş bir günlük yaşam senaryosu yazar. Böylece ikinci aşama "görüntüde olmayan" bir ayrıntıyı kesin gerçek gibi kuramaz.
+
+`OPENAI_API_KEY` yoksa ikinci çağrı `GEMINI_SCENARIO_MODEL` ile yürür. Bu, ücretsiz Gemini Flash / Flash-Lite katmanında iki ayrı canlı model çağrısı demektir: biri analiz, biri senaryo üretimi. Bir OpenAI anahtarı eklendiğinde ikinci ajan otomatik olarak OpenAI'ye geçer.
 
 ## Yerel çalıştırma
 

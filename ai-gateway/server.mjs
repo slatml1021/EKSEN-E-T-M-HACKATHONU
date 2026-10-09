@@ -71,7 +71,9 @@ createServer(async (request, response) => {
     const body = await readJson(request);
     const input = validateInput(body);
     const analysis = await analyzeWithGemini(input.image);
-    const mission = await createScenarioWithOpenAI(analysis, input.learner);
+    const scenario = process.env.OPENAI_API_KEY
+      ? await createScenarioWithOpenAI(analysis, input.learner)
+      : await createScenarioWithGemini(analysis, input.learner);
     // The raw image is intentionally never written to disk, logs, or a database.
     return json(response, 200, {
       analysis,
@@ -81,13 +83,13 @@ createServer(async (request, response) => {
         confidence: analysis.confidence,
         objects: analysis.objects.map((item) => item.label),
         color: '#1C6970',
-        ...mission,
-        phrase: { id: `phrase-${requestId.slice(0, 8)}`, used: false, ...mission.phrase },
+        ...scenario.mission,
+        phrase: { id: `phrase-${requestId.slice(0, 8)}`, used: false, ...scenario.mission.phrase },
       },
       origin: {
         mode: 'live',
         visionLabel: 'Gemini Vision',
-        scenarioLabel: 'Scenario AI',
+        scenarioLabel: scenario.label,
       },
     });
   } catch (error) {
@@ -99,20 +101,25 @@ createServer(async (request, response) => {
 }).listen(PORT, () => console.log(`LifeLens AI gateway listening on :${PORT}`));
 
 async function analyzeWithGemini(image) {
-  const model = process.env.GEMINI_VISION_MODEL ?? 'gemini-2.5-flash';
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: 'You are LifeLens Vision. Analyze only visibly supported context for an English-learning application. Do not identify people, infer sensitive traits, read private text, or state guesses as facts. Return Turkish labels and explanations. Put every uncertainty in uncertainties.' }] },
-      contents: [{ parts: [
-        { inline_data: { mime_type: image.mimeType, data: image.base64 } },
-        { text: 'List concrete visible objects, their visual evidence, visible relationships, a broad environment label, and uncertainty. This is analysis only; do not create a language lesson or scenario.' },
-      ] }],
-      generationConfig: { responseMimeType: 'application/json', responseJsonSchema: VISION_SCHEMA, temperature: 0.1 },
-    }),
-  });
-  const payload = await parseProviderResponse(response, 'gemini_unavailable');
+  const primaryModel = process.env.GEMINI_VISION_MODEL ?? 'gemini-flash-latest';
+  const fallbackModel = process.env.GEMINI_VISION_FALLBACK_MODEL ?? 'gemini-flash-lite-latest';
+  const request = {
+    systemInstruction: { parts: [{ text: 'You are LifeLens Vision. Analyze only visibly supported context for an English-learning application. Do not identify people, infer sensitive traits, read private text, or state guesses as facts. Return Turkish labels and explanations. Put every uncertainty in uncertainties.' }] },
+    contents: [{ parts: [
+      { inline_data: { mime_type: image.mimeType, data: image.base64 } },
+      { text: 'List concrete visible objects, their visual evidence, visible relationships, a broad environment label, and uncertainty. This is analysis only; do not create a language lesson or scenario.' },
+    ] }],
+    generationConfig: { responseMimeType: 'application/json', responseJsonSchema: VISION_SCHEMA, temperature: 0.1 },
+  };
+  let model = primaryModel;
+  let payload;
+  try {
+    payload = await callGemini(model, request, 'gemini_unavailable');
+  } catch (error) {
+    if (!(error instanceof ProviderError) || ![429, 503].includes(error.status) || primaryModel === fallbackModel) throw error;
+    model = fallbackModel;
+    payload = await callGemini(model, request, 'gemini_unavailable');
+  }
   const text = payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? '').join('') ?? '';
   const result = parseJson(text, 'gemini_invalid_response');
   if (!isVisionAnalysis(result)) throw new ProviderError('gemini_invalid_response');
@@ -143,7 +150,30 @@ async function createScenarioWithOpenAI(analysis, learner) {
   const text = outputText(payload);
   const result = parseJson(text, 'scenario_invalid_response');
   if (!isMission(result)) throw new ProviderError('scenario_invalid_response');
-  return result;
+  return { mission: result, label: 'OpenAI Scenario AI' };
+}
+
+/**
+ * Free-tier-friendly live fallback: this is intentionally a second, separate
+ * model call. Vision sees the photo; the scenario agent receives only Gemini's
+ * structured output, never the original image.
+ */
+async function createScenarioWithGemini(analysis, learner) {
+  const model = process.env.GEMINI_SCENARIO_MODEL ?? 'gemini-flash-lite-latest';
+  const prompt = {
+    analysis,
+    learner,
+    instruction: 'Create exactly one broader, believable daily-life English speaking scenario from this evidence only. The scenario can continue beyond the frame but must stay plausibly connected to visible evidence. Never turn an uncertainty into a fact. Keep English phrase and opening appropriate for the learner CEFR level. Use Turkish for objective/context and English for title, mission, opening, partner, and phrase.en. Respect the learner tone preferences.',
+  };
+  const payload = await callGemini(model, {
+    systemInstruction: { parts: [{ text: 'You are LifeLens Scenario Agent. You create language-learning missions only from structured visual evidence produced by another model. Follow the supplied JSON schema exactly.' }] },
+    contents: [{ parts: [{ text: JSON.stringify(prompt) }] }],
+    generationConfig: { responseMimeType: 'application/json', responseJsonSchema: MISSION_SCHEMA, temperature: 0.4 },
+  }, 'scenario_unavailable');
+  const text = payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? '').join('') ?? '';
+  const result = parseJson(text, 'scenario_invalid_response');
+  if (!isMission(result)) throw new ProviderError('scenario_invalid_response');
+  return { mission: result, label: 'Gemini Scenario Agent' };
 }
 
 function outputText(payload) {
@@ -153,8 +183,27 @@ function outputText(payload) {
 
 async function parseProviderResponse(response, code) {
   const payload = await response.json().catch(() => null);
-  if (!response.ok || !payload) throw new ProviderError(code);
+  if (!response.ok || !payload) throw new ProviderError(code, response.status);
   return payload;
+}
+
+async function callGemini(model, body, code) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 24_000);
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
+      body: JSON.stringify(body),
+    });
+    return await parseProviderResponse(response, code);
+  } catch (error) {
+    if (error instanceof ProviderError) throw error;
+    throw new ProviderError(code, 504);
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function validateInput(body) {
@@ -209,7 +258,7 @@ function withinRateLimit(key) {
   if (current.used >= RATE_LIMIT.count) return false;
   current.used += 1; return true;
 }
-function providersConfigured() { return Boolean(process.env.GEMINI_API_KEY && process.env.OPENAI_API_KEY); }
+function providersConfigured() { return Boolean(process.env.GEMINI_API_KEY); }
 function setCors(request, response) {
   const configuredOrigin = process.env.CORS_ORIGIN;
   const origin = request.headers.origin;
@@ -219,4 +268,4 @@ function setCors(request, response) {
 }
 function json(response, status, body) { response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); response.end(JSON.stringify(body)); }
 class InputError extends Error { constructor(code) { super(code); this.code = code; } }
-class ProviderError extends Error { constructor(code) { super(code); this.code = code; } }
+class ProviderError extends Error { constructor(code, status = 502) { super(code); this.code = code; this.status = status; } }
