@@ -5,8 +5,8 @@ LifeLens, kullanıcının kendi çevresindeki fotoğrafları İngilizce konuşma
 ## Hackathon MVP akışı
 
 1. Kullanıcı kamera, galeri veya önceden hazırlanmış bağlamlardan birini seçer.
-2. LifeLens, görselden çıkan nesneleri, bağlam güvenini ve iletişim ihtiyacını gösterir.
-3. Sistem A2/B1 seviyesine uygun, ölçülebilir bir konuşma görevi üretir.
+2. **Gemini Vision**, görseldeki yalnızca görünür nesneleri, ilişkileri, kanıtları ve belirsizlikleri yapılandırılmış biçimde çıkarır.
+3. **Scenario AI**, Gemini analizini (fotoğrafın kendisini değil) kullanarak A2/B1 seviyesine ve İngilizce İkizi profiline uygun, fotoğraftan daha geniş ama bağlama bağlı bir günlük yaşam senaryosu üretir.
 4. Kullanıcı metin üzerinden yapay zekâ konuşma partnerine yanıt verir.
 5. Geri bildirim; doğruluk, doğallık ve **İngilizce İkizi** ile uyum katmanlarına ayrılır.
 6. Kullanıcı kişiselleştirilmiş ifadeyi kitaplığına kaydeder ve ilerlemesi ana ekrana yansır.
@@ -15,13 +15,13 @@ LifeLens, kullanıcının kendi çevresindeki fotoğrafları İngilizce konuşma
 
 Ana ekrandaki **Hackathon Demo Modu**, mikrofon, su şişesi, laptop ve not defterini içeren "Jüri Masası" bağlamını doğrudan açar. Bu akış sırasıyla *Anlama → Görev → Konuşma → Geri bildirim* adımlarını görünür biçimde gösterir. Böylece canlı sunumda gerçek bir fotoğrafa ihtiyaç kalmadan ürünün değer önerisi tekrarlanabilir.
 
-Bu sürümde kamera/galeri seçimi çalışır; senaryo üretimi, konuşma partneri ve değerlendirme katmanı güvenli, deterministik demo verisiyle çalışır. Arayüz bu katmanların gerçek görsel model ve LLM API'siyle değiştirilmesi için tasarlanmıştır; görsel analiz sonucu olduğunu iddia eden doğrulanamayan ayrıntılar üretmez.
+Kamera/galeri seçimi çalışır. `EXPO_PUBLIC_LIFELENS_API_URL` tanımlıysa fotoğraf güvenli AI Gateway'e gönderilir ve iki model sıralı olarak çalışır. Gateway yoksa arayüz, fotoğraftaki nesneleri uydurmayan ve açıkça **yerel güvenli görev** olarak etiketlenen bir yedek akış gösterir. Jüri Masası ise internet gerektirmeyen, hazırlanmış demo bağlamıdır.
 
 ## Ürün mimarisi
 
 - **Expo Router:** Ana bölümler dosya tabanlı rotalara ayrılmıştır. Böylece Studio, Kütüphane, İkizim ve Profil ayrı ekranlar olarak büyüyebilir.
 - **Kalıcı öğrenme verisi:** Görev geçmişi, ifadeler, seviye, İkiz profili ve gizlilik tercihi cihazda kalır.
-- **AI provider sınırı:** Öğrenme motoru, offline demo motoru ile gerçek görsel model/LLM adaptörünü birbirinden ayırır.
+- **İki aşamalı AI sınırı:** `missionPipeline`, mobil anahtar taşımadan Gateway'e gider. Gateway önce Gemini Vision ile kanıt temelli analiz yapar, ardından bu JSON'u ikinci senaryo modeline aktarır.
 - **Tip güvenliği:** Öğrenme verisi, sahne, değerlendirme ve görev geçmişi merkezi olarak tanımlıdır.
 
 Detaylı teknik harita: [Architecture](docs/ARCHITECTURE.md).
@@ -45,3 +45,8 @@ Ardından Expo Go ile QR kodu okutabilir veya `npm run ios` / `npm run android` 
 - Düzenlenebilir İngilizce İkizim ton kontrolleri
 - Life Map, ilerleme ve gizlilik tercihleri
 - Cihaz yeniden başlatılsa da korunan öğrenme özeti ve son görev kaydı
+- Fotoğraf → Gemini görünür bağlamı → ikinci AI ile genişletilmiş senaryo zinciri
+
+## Canlı AI'ı bağlama
+
+`mobile/.env.example` dosyasındaki yalnızca gateway URL'sini yerel ortam değişkenine ekleyin. Gemini ve senaryo modeli anahtarlarını mobil uygulamaya eklemeyin; [AI Gateway](../ai-gateway/README.md) bu anahtarları sunucu tarafında tutar. Google'ın Gemini API'si görseli `generateContent` isteğinde inline veri olarak alabilir; gateway bu çağrıyı kullanıcı cihazı yerine sunucudan yapar. [Gemini API dokümantasyonu](https://ai.google.dev/api/generate-content)

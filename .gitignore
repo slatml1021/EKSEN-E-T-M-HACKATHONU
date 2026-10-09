@@ -1,2 +1,7 @@
 # Never commit local cloud configuration or generated cloud credentials.
 .cloud
+
+# Provider secrets stay in the deployment environment, never in the repository.
+**/.env
+**/.env.local
+**/.env.*.local

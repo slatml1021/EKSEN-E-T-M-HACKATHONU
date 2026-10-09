@@ -23,7 +23,7 @@ export type Twin = {
 };
 
 export type Scene = {
-  id: SceneId;
+  id: string;
   icon: string;
   title: string;
   place: string;
@@ -36,6 +36,39 @@ export type Scene = {
   opening: string;
   phrase: Phrase;
   color: string;
+};
+
+/**
+ * The first, vision-only step. It intentionally records uncertainty so that
+ * the scenario writer cannot turn a guess into a fact.
+ */
+export type VisionObject = {
+  label: string;
+  confidence: number;
+  visibleEvidence: string;
+};
+
+export type VisionAnalysis = {
+  provider: 'gemini' | 'demo';
+  model: string;
+  confidence: number;
+  environment: string;
+  objects: VisionObject[];
+  observations: string[];
+  relationships: string[];
+  uncertainties: string[];
+};
+
+export type MissionOrigin = {
+  mode: 'live' | 'fallback' | 'demo';
+  visionLabel: string;
+  scenarioLabel: string;
+};
+
+export type PhotoMission = {
+  scene: Scene;
+  analysis: VisionAnalysis;
+  origin: MissionOrigin;
 };
 
 export type Evaluation = {
@@ -51,7 +84,7 @@ export type Evaluation = {
 
 export type MissionRecord = {
   id: string;
-  sceneId: SceneId;
+  sceneId: string;
   title: string;
   naturalness: number;
   completedAt: string;
