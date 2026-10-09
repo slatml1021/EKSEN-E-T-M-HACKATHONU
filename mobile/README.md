@@ -26,6 +26,12 @@ Kamera/galeri seçimi çalışır. `EXPO_PUBLIC_LIFELENS_API_URL` tanımlıysa f
 
 Detaylı teknik harita: [Architecture](docs/ARCHITECTURE.md).
 
+## Mobil + web: tek ürün, tek kaynak
+
+LifeLens için ayrı bir web prototipi korunmaz. `App.tsx`, Expo Router rotaları, görev akışı, ifade kütüphanesi, İngilizce İkizim ve Gemini → Scenario AI pipeline'ı Android, iOS ve web için **aynı kaynak kodundan** derlenir. Böylece bir platformda görülen görev, metin, seviye mantığı ve güvenlik davranışı diğerinde de aynıdır.
+
+Sadece cihazın saklama katmanı platforma göre değişir: mobilde SQLite, webde tarayıcı depolaması kullanılır. Bu teknik fark, içerik veya öğrenme geçmişinin şemasını değiştirmez. Ayrıntılı kontrol listesi: [Platform Parity](docs/PLATFORM_PARITY.md).
+
 ## Çalıştırma
 
 ```bash
@@ -33,7 +39,7 @@ npm install
 npm start
 ```
 
-Ardından Expo Go ile QR kodu okutabilir veya `npm run ios` / `npm run android` komutlarını kullanabilirsin.
+Ardından Expo Go ile QR kodu okutabilir, `npm run ios` / `npm run android` komutlarını kullanabilir veya `npm run web` ile tarayıcıda açabilirsin. Yayınlanabilir web çıktısı için `npm run export:web` çalıştırılır.
 
 ## Kapsam
 
