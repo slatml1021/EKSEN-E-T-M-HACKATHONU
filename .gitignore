@@ -1,0 +1,2 @@
+# Never commit local cloud configuration or generated cloud credentials.
+.cloud
