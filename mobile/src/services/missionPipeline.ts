@@ -14,6 +14,7 @@ export type PhotoMissionInput = {
 type GatewayPayload = {
   analysis: VisionAnalysis;
   mission: Omit<Scene, 'color'> & { color?: string };
+  alternatives: (Omit<Scene, 'color'> & { color?: string })[];
   origin: MissionOrigin;
 };
 
@@ -51,6 +52,10 @@ export async function createMissionFromPhoto(input: PhotoMissionInput): Promise<
       analysis: payload.analysis,
       origin: payload.origin,
       scene: { ...payload.mission, color: payload.mission.color ?? '#1C6970' },
+      alternatives: payload.alternatives.map((alternative, index) => ({
+        ...alternative,
+        color: alternative.color ?? ['#1C6970', '#304D7C', '#9C6142'][index] ?? '#1C6970',
+      })),
     };
   } catch {
     return localFallbackMission();
@@ -77,6 +82,27 @@ export function demoAnalysisFor(scene: Scene): VisionAnalysis {
 }
 
 function localFallbackMission(): PhotoMission {
+  const scene: Scene = {
+    id: `fallback-${Date.now()}`,
+    icon: '⌁',
+    title: 'A clear help request',
+    place: 'Seçtiğin ortam',
+    confidence: 0,
+    objects: [],
+    context: 'Fotoğrafın analizi için bağlantı kurulamadı. Bu yüzden görünmeyen nesneler hakkında varsayım yapmadan, herhangi bir ortak alanda kullanılabilecek güvenli bir konuşma görevi hazırladık.',
+    mission: 'Ask for practical help',
+    objective: 'Bulunduğun ortamda küçük bir ihtiyacını kısa ve nazik biçimde açıkla.',
+    partner: 'Mina · helper',
+    opening: 'Hi! Is there anything you need help with?',
+    phrase: {
+      id: `fallback-phrase-${Date.now()}`,
+      en: 'Could you give me a hand with this, please?',
+      tr: 'Bununla ilgili bana yardım eder misin, lütfen?',
+      context: 'Genel yardım isteme',
+      used: false,
+    },
+    color: '#5E7788',
+  };
   return {
     analysis: {
       provider: 'demo',
@@ -93,36 +119,19 @@ function localFallbackMission(): PhotoMission {
       visionLabel: 'Gemini Vision bekleniyor',
       scenarioLabel: 'Yerel güvenli görev',
     },
-    scene: {
-      id: `fallback-${Date.now()}`,
-      icon: '⌁',
-      title: 'A clear help request',
-      place: 'Seçtiğin ortam',
-      confidence: 0,
-      objects: [],
-      context: 'Fotoğrafın analizi için bağlantı kurulamadı. Bu yüzden görünmeyen nesneler hakkında varsayım yapmadan, herhangi bir ortak alanda kullanılabilecek güvenli bir konuşma görevi hazırladık.',
-      mission: 'Ask for practical help',
-      objective: 'Bulunduğun ortamda küçük bir ihtiyacını kısa ve nazik biçimde açıkla.',
-      partner: 'Mina · helper',
-      opening: 'Hi! Is there anything you need help with?',
-      phrase: {
-        id: `fallback-phrase-${Date.now()}`,
-        en: 'Could you give me a hand with this, please?',
-        tr: 'Bununla ilgili bana yardım eder misin, lütfen?',
-        context: 'Genel yardım isteme',
-        used: false,
-      },
-      color: '#5E7788',
-    },
+    scene,
+    alternatives: [scene],
   };
 }
 
 function isGatewayPayload(value: unknown): value is GatewayPayload {
   if (!value || typeof value !== 'object') return false;
   const candidate = value as Partial<GatewayPayload>;
-  return Boolean(candidate.analysis && candidate.mission && candidate.origin
+  return Boolean(candidate.analysis && candidate.mission && candidate.origin && Array.isArray(candidate.alternatives)
     && Array.isArray(candidate.analysis.objects)
     && typeof candidate.mission.title === 'string'
     && typeof candidate.mission.opening === 'string'
-    && typeof candidate.mission.phrase?.en === 'string');
+    && typeof candidate.mission.phrase?.en === 'string'
+    && candidate.alternatives.length >= 1
+    && candidate.alternatives.every((alternative) => typeof alternative?.title === 'string' && typeof alternative?.opening === 'string' && typeof alternative?.phrase?.en === 'string'));
 }

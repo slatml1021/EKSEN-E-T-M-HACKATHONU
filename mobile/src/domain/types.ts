@@ -67,6 +67,7 @@ export type MissionOrigin = {
 
 export type PhotoMission = {
   scene: Scene;
+  alternatives: Scene[];
   analysis: VisionAnalysis;
   origin: MissionOrigin;
 };

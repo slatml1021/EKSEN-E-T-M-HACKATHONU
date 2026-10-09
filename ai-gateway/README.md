@@ -5,16 +5,16 @@ Bu servis, mobil uygulamanın fotoğrafla öğrenme akışındaki iki modeli gü
 ```text
 Mobil uygulama → Gateway → Gemini Vision → yapılandırılmış görünür bağlam
                                   ↓
-                      Gemini Scenario Agent (veya OpenAI Responses API)
+                       Gemini 2.5 Flash-Lite (aynı API anahtarı)
                                   ↓
-                 seviyeye ve İngilizce İkizi'ne uygun geniş senaryo
+                   üç genişletilmiş, seçilebilir konuşma senaryosu
 ```
 
 ## Neden iki model?
 
-Gemini Vision yalnızca fotoğrafta görünür olarak desteklenen nesneleri, ilişkileri ve belirsizlikleri JSON olarak döndürür. İkinci ajan fotoğrafı yeniden görmez; bu doğrulanmış analizi kullanarak, fotoğrafın bağlamına bağlı ama daha geniş bir günlük yaşam senaryosu yazar. Böylece ikinci aşama "görüntüde olmayan" bir ayrıntıyı kesin gerçek gibi kuramaz.
+Gemini Vision yalnızca fotoğrafta görünür olarak desteklenen nesneleri, ilişkileri ve belirsizlikleri JSON olarak döndürür. Ardından aynı sunucu tarafı `GEMINI_API_KEY` ile çalışan **Gemini 2.5 Flash-Lite**, ham fotoğrafı değil bu doğrulanmış analizi ve aşağıdaki ürün talimatını alır: “Verilen analize göre bir senaryo oluştur. Bu senaryo analizdeki obje ile bağlantılı ama genişletilmiş olsun. Farklı birkaç senaryo öner.”
 
-`OPENAI_API_KEY` yoksa ikinci çağrı `GEMINI_SCENARIO_MODEL` ile yürür. Bu, ücretsiz Gemini Flash / Flash-Lite katmanında iki ayrı canlı model çağrısı demektir: biri analiz, biri senaryo üretimi. Bir OpenAI anahtarı eklendiğinde ikinci ajan otomatik olarak OpenAI'ye geçer.
+İkinci çağrı tam olarak üç farklı seçeneği yapılandırılmış JSON olarak döndürür; uygulama önerilen seçeneği açar ve diğer ikisini de seçilebilir biçimde gösterir. Gemini 2.5 Flash-Lite, yeni projelerde erişim kısıtına takılırsa gateway yalnızca `GEMINI_SCENARIO_FALLBACK_MODEL` değerine geçer; bu sayede demo akışı tamamen kesilmez.
 
 ## Yerel çalıştırma
 
@@ -26,13 +26,13 @@ Gemini Vision yalnızca fotoğrafta görünür olarak desteklenen nesneleri, ili
 EXPO_PUBLIC_LIFELENS_API_URL=https://your-gateway.example.com
 ```
 
-`EXPO_PUBLIC_` değeri bir gizli anahtar değildir; yalnızca yayınlanmış gateway URL'sidir. `GEMINI_API_KEY` ve `OPENAI_API_KEY` sadece sunucuda kalır.
+`EXPO_PUBLIC_` değeri bir gizli anahtar değildir; yalnızca yayınlanmış gateway URL'sidir. `GEMINI_API_KEY` yalnızca sunucuda kalır.
 
 ## API sözleşmesi
 
 `POST /v1/missions/from-image`
 
-İstek; base64 JPEG/PNG/WebP görseli ve kullanıcının A2/B1 seviyesi ile tarz tercihlerini alır. En fazla 5 MB görsel ve 12 istek / 10 dakika / IP kabul edilir. Yanıt; `analysis`, `mission` ve hangi katmanların çalıştığını gösteren `origin` alanlarını döndürür.
+İstek; base64 JPEG/PNG/WebP görseli ve kullanıcının A2/B1 seviyesi ile tarz tercihlerini alır. En fazla 5 MB görsel ve 12 istek / 10 dakika / IP kabul edilir. Yanıt; `analysis`, önerilen `mission`, üç senaryonun tamamını içeren `alternatives` ve hangi katmanların çalıştığını gösteren `origin` alanlarını döndürür.
 
 Ham fotoğraf hiçbir dosyaya, loga veya veritabanına yazılmaz. Uygulama gateway'e erişemediğinde mobil uygulama bunu açıkça belirten, fotoğraftaki nesneleri uydurmayan bir yerel görev gösterir.
 

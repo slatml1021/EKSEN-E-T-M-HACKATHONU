@@ -55,6 +55,21 @@ const MISSION_SCHEMA = {
   },
 };
 
+const SCENARIO_SET_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['recommendedIndex', 'scenarios'],
+  properties: {
+    recommendedIndex: { type: 'integer', minimum: 0, maximum: 2 },
+    scenarios: {
+      type: 'array',
+      minItems: 3,
+      maxItems: 3,
+      items: MISSION_SCHEMA,
+    },
+  },
+};
+
 createServer(async (request, response) => {
   const requestId = randomUUID();
   setCors(request, response);
@@ -71,25 +86,17 @@ createServer(async (request, response) => {
     const body = await readJson(request);
     const input = validateInput(body);
     const analysis = await analyzeWithGemini(input.image);
-    const scenario = process.env.OPENAI_API_KEY
-      ? await createScenarioWithOpenAI(analysis, input.learner)
-      : await createScenarioWithGemini(analysis, input.learner);
+    const scenarioSet = await createScenarioSetWithGemini(analysis, input.learner);
+    const alternatives = scenarioSet.scenarios.map((scenario, index) => missionForResponse(scenario, analysis, requestId, index));
     // The raw image is intentionally never written to disk, logs, or a database.
     return json(response, 200, {
       analysis,
-      mission: {
-        id: `photo-${requestId.slice(0, 8)}`,
-        icon: '⌁',
-        confidence: analysis.confidence,
-        objects: analysis.objects.map((item) => item.label),
-        color: '#1C6970',
-        ...scenario.mission,
-        phrase: { id: `phrase-${requestId.slice(0, 8)}`, used: false, ...scenario.mission.phrase },
-      },
+      mission: alternatives[scenarioSet.recommendedIndex],
+      alternatives,
       origin: {
         mode: 'live',
         visionLabel: 'Gemini Vision',
-        scenarioLabel: scenario.label,
+        scenarioLabel: scenarioSet.label,
       },
     });
   } catch (error) {
@@ -126,59 +133,48 @@ async function analyzeWithGemini(image) {
   return { ...result, provider: 'gemini', model };
 }
 
-async function createScenarioWithOpenAI(analysis, learner) {
-  const model = process.env.OPENAI_SCENARIO_MODEL ?? 'gpt-5-mini';
-  const prompt = {
-    analysis,
-    learner,
-    instruction: 'Create one broader, believable daily-life English speaking scenario from this evidence only. The mission may extend beyond the frame (for example into a cafe, office, or event) but must remain plausibly connected to the visible context. Never turn an uncertainty into a fact. Keep the English phrase and opening appropriate for the learner CEFR level. Use Turkish for description/objective and English for title, mission, opening, and phrase.en. Respect the learner tone preferences.',
-  };
-  const response = await fetch('https://api.openai.com/v1/responses', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-    body: JSON.stringify({
-      model,
-      store: false,
-      input: [
-        { role: 'developer', content: 'You are LifeLens Scenario Composer. Create structured learning missions from a separately verified vision analysis. Follow the supplied JSON schema exactly.' },
-        { role: 'user', content: JSON.stringify(prompt) },
-      ],
-      text: { format: { type: 'json_schema', name: 'lifelens_mission', strict: true, schema: MISSION_SCHEMA } },
-    }),
-  });
-  const payload = await parseProviderResponse(response, 'scenario_unavailable');
-  const text = outputText(payload);
-  const result = parseJson(text, 'scenario_invalid_response');
-  if (!isMission(result)) throw new ProviderError('scenario_invalid_response');
-  return { mission: result, label: 'OpenAI Scenario AI' };
-}
-
 /**
- * Free-tier-friendly live fallback: this is intentionally a second, separate
- * model call. Vision sees the photo; the scenario agent receives only Gemini's
- * structured output, never the original image.
+ * This is deliberately a second Gemini call. Vision sees the photo; Gemini
+ * 2.5 Flash-Lite receives only that structured analysis, never the raw image.
  */
-async function createScenarioWithGemini(analysis, learner) {
-  const model = process.env.GEMINI_SCENARIO_MODEL ?? 'gemini-flash-lite-latest';
+async function createScenarioSetWithGemini(analysis, learner) {
+  const primaryModel = process.env.GEMINI_SCENARIO_MODEL ?? 'gemini-2.5-flash-lite';
+  const fallbackModel = process.env.GEMINI_SCENARIO_FALLBACK_MODEL ?? 'gemini-3.5-flash-lite';
   const prompt = {
     analysis,
     learner,
-    instruction: 'Create exactly one broader, believable daily-life English speaking scenario from this evidence only. The scenario can continue beyond the frame but must stay plausibly connected to visible evidence. Never turn an uncertainty into a fact. Keep English phrase and opening appropriate for the learner CEFR level. Use Turkish for objective/context and English for title, mission, opening, partner, and phrase.en. Respect the learner tone preferences.',
+    instruction: 'Verilen analize göre bir senaryo oluştur. Bu senaryo analizdeki obje ile bağlantılı ama genişletilmiş olsun. Farklı birkaç senaryo öner.',
+    constraints: [
+      'Return exactly three distinct, believable daily-life English speaking scenarios.',
+      'Each scenario may continue beyond the frame, but must remain plausibly connected to visible evidence.',
+      'Never turn an uncertainty into a fact and do not add unsupported objects or events.',
+      'Keep the English phrase and opening appropriate for the learner CEFR level.',
+      'Use Turkish for objective and context; use English for title, mission, opening, partner, and phrase.en.',
+      'Respect the learner tone preferences. Set recommendedIndex to the strongest first choice.',
+    ],
   };
-  const payload = await callGemini(model, {
+  const request = {
     systemInstruction: { parts: [{ text: 'You are LifeLens Scenario Agent. You create language-learning missions only from structured visual evidence produced by another model. Follow the supplied JSON schema exactly.' }] },
     contents: [{ parts: [{ text: JSON.stringify(prompt) }] }],
-    generationConfig: { responseMimeType: 'application/json', responseJsonSchema: MISSION_SCHEMA, temperature: 0.4 },
-  }, 'scenario_unavailable');
+    generationConfig: { responseMimeType: 'application/json', responseJsonSchema: SCENARIO_SET_SCHEMA, temperature: 0.55 },
+  };
+  let model = primaryModel;
+  let payload;
+  try {
+    payload = await callGemini(model, request, 'scenario_unavailable');
+  } catch (error) {
+    if (!(error instanceof ProviderError) || ![404, 429, 503].includes(error.status) || primaryModel === fallbackModel) throw error;
+    model = fallbackModel;
+    payload = await callGemini(model, request, 'scenario_unavailable');
+  }
   const text = payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? '').join('') ?? '';
   const result = parseJson(text, 'scenario_invalid_response');
-  if (!isMission(result)) throw new ProviderError('scenario_invalid_response');
-  return { mission: result, label: 'Gemini Scenario Agent' };
-}
-
-function outputText(payload) {
-  if (typeof payload.output_text === 'string') return payload.output_text;
-  return (payload.output ?? []).flatMap((item) => item.content ?? []).filter((item) => item.type === 'output_text').map((item) => item.text ?? '').join('');
+  if (!isScenarioSet(result)) throw new ProviderError('scenario_invalid_response');
+  return {
+    scenarios: result.scenarios,
+    recommendedIndex: result.recommendedIndex,
+    label: model === primaryModel ? 'Gemini 2.5 Flash-Lite · 3 seçenek' : 'Gemini Flash-Lite · yedek model · 3 seçenek',
+  };
 }
 
 async function parseProviderResponse(response, code) {
@@ -223,6 +219,25 @@ function isVisionAnalysis(value) {
 function isMission(value) {
   return value && ['title', 'place', 'mission', 'objective', 'partner', 'opening'].every((key) => typeof value[key] === 'string')
     && value.phrase && ['en', 'tr', 'context'].every((key) => typeof value.phrase[key] === 'string');
+}
+
+function isScenarioSet(value) {
+  return value && Number.isInteger(value.recommendedIndex) && value.recommendedIndex >= 0 && value.recommendedIndex < 3
+    && Array.isArray(value.scenarios) && value.scenarios.length === 3 && value.scenarios.every(isMission);
+}
+
+function missionForResponse(mission, analysis, requestId, index) {
+  const colors = ['#1C6970', '#304D7C', '#9C6142'];
+  const icons = ['✦', '◌', '⌁'];
+  return {
+    id: `photo-${requestId.slice(0, 8)}-${index + 1}`,
+    icon: icons[index] ?? '✦',
+    confidence: analysis.confidence,
+    objects: analysis.objects.map((item) => item.label),
+    color: colors[index] ?? '#1C6970',
+    ...mission,
+    phrase: { id: `phrase-${requestId.slice(0, 8)}-${index + 1}`, used: false, ...mission.phrase },
+  };
 }
 
 function parseJson(text, code) {
