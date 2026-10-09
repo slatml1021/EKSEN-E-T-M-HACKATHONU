@@ -17,6 +17,27 @@ export type Phrase = {
   used: boolean;
 };
 
+export type WordEntry = {
+  id: string;
+  en: string;
+  tr: string;
+  sentence: string;
+};
+
+export type LocalUser = {
+  name: string;
+  email: string;
+  password: string;
+};
+
+export type VoiceAnalysis = {
+  id: 'formal' | 'casual';
+  sentence: string;
+  translation: string;
+  traits: { label: string; value: number; color: string }[];
+  words: Omit<WordEntry, 'id' | 'sentence'>[];
+};
+
 export type Twin = {
   directness: number;
   warmth: number;
@@ -97,6 +118,7 @@ export type MissionRecord = {
 export type LearningSnapshot = {
   schemaVersion: 1;
   phrases: Phrase[];
+  words?: WordEntry[];
   twin: Twin;
   level: LearnerLevel;
   privacy: boolean;

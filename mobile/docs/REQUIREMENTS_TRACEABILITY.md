@@ -39,10 +39,10 @@ Fotoğraf (yalnızca izin açıksa) ──► Gemini Vision
 | FR-07–10 Seviye | Uygulandı | Kullanıcı A1, A2, B1, B2, C1 veya C2 seçer; gateway senaryo istemine seviyeyi iletir. |
 | FR-11 Uyarlanabilir zorluk | Kısmi | Görev sonucu yerelde kaydedilir; otomatik seviye yükseltme algoritması sonraki sürümdedir. |
 | FR-12–20 Snap & Speak | Uygulandı | Kamera/galeri, Gemini Vision, görünür kanıt, üç geniş senaryo, seçim, yazılı görev ve ifade eşleştirmesi vardır. Sesli yanıt FR-31–32 kapsamındadır. |
-| FR-21–26 İngilizce İkizim | Uygulandı | Türkçe metin örneği, şeffaf işaretler, düzenlenebilir üç ton değeri ve tona uygun alternatif vardır. |
+| FR-21–26 İngilizce İkizim | Sonraki sürüm | Ayrı İkizim ekranı ürün akışından çıkarıldı; ses analizi ton göstergeleri Stüdyo sonucunda sunulur. |
 | FR-27 Gelişmiş öğrenen profil | Sonraki sürüm | Uzun dönem geri bildirimiyle profil güncelleme henüz yoktur. |
 | FR-28 Psikolojik hüküm yok | Uygulandı | Arayüz ve algoritma bunu dil tercihi tahmini olarak tanımlar. |
-| FR-29–30, 33–35 Diyalog | Kısmi | Yazılı diyalog ve deterministik bir partner devam turu vardır. Çok turlu canlı LLM partneri sonraki sürümdedir. |
+| FR-29–30, 33–35 Diyalog | Kısmi | Fotoğraf görevlerinde yazılı diyalog ve deterministik bir partner devam turu vardır. Stüdyo ses analizi şu an iki kontrollü demo sonucu kullanır; çok turlu canlı LLM partneri sonraki sürümdedir. |
 | FR-31–32 Ses | Sonraki sürüm | MVP'de sesli yanıt/transkripsiyon yoktur; metin akışı eksiksiz çalışır. |
 | FR-36–43 Geri bildirim | Uygulandı (MVP) | Açık dilbilgisi hatası, doğallık ve ton uyumu ayrı verilir; sahne bağlamı kullanılır. Tam serbest metin dil modeli değerlendirmesi sonraki sürümdedir. |
 | FR-44–46 İfade kütüphanesi | Uygulandı | İfade kaydetme, listeleme, silme; Türkçe anlam ve bağlam alanları vardır. |

@@ -25,7 +25,13 @@
       ],
       "expo-router",
       "expo-status-bar",
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "LifeLens, konuşma tarzını analiz etmek için kısa ses kayıtları alır."
+        }
+      ]
     ],
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",

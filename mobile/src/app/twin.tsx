@@ -1,5 +1,3 @@
-import App from '../../App';
+import { Redirect } from 'expo-router';
 
-export default function TwinRoute() {
-  return <App defaultTab="twin" />;
-}
+export default function TwinRoute() { return <Redirect href="/" />; }
