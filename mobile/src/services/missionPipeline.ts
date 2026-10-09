@@ -26,7 +26,7 @@ const API_URL = process.env.EXPO_PUBLIC_LIFELENS_API_URL?.replace(/\/$/, '');
  * clearly labelled generic practice mission rather than inventing photo facts.
  */
 export async function createMissionFromPhoto(input: PhotoMissionInput): Promise<PhotoMission> {
-  if (!API_URL) return localFallbackMission();
+  if (!API_URL) return localFallbackMission('Canlı analiz için güvenli AI Gateway adresi yapılandırılmamış.');
 
   const controller = new AbortController();
   // Both Gemini stages may be queued on the free tier. The gateway has its own
@@ -47,7 +47,10 @@ export async function createMissionFromPhoto(input: PhotoMissionInput): Promise<
         },
       }),
     });
-    if (!response.ok) throw new Error(`Gateway request failed (${response.status})`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => null) as { error?: string } | null;
+      throw new Error(`gateway:${error?.error ?? response.status}`);
+    }
     const payload = await response.json() as GatewayPayload;
     if (!isGatewayPayload(payload)) throw new Error('Gateway returned an invalid mission');
     return {
@@ -59,8 +62,8 @@ export async function createMissionFromPhoto(input: PhotoMissionInput): Promise<
         color: alternative.color ?? ['#1C6970', '#304D7C', '#9C6142'][index] ?? '#1C6970',
       })),
     };
-  } catch {
-    return localFallbackMission();
+  } catch (error) {
+    return localFallbackMission(fallbackNotice(error));
   } finally {
     clearTimeout(timeout);
   }
@@ -83,7 +86,7 @@ export function demoAnalysisFor(scene: Scene): VisionAnalysis {
   };
 }
 
-function localFallbackMission(): PhotoMission {
+function localFallbackMission(notice: string): PhotoMission {
   const scene: Scene = {
     id: `fallback-${Date.now()}`,
     icon: '⌁',
@@ -120,10 +123,20 @@ function localFallbackMission(): PhotoMission {
       mode: 'fallback',
       visionLabel: 'Gemini Vision bekleniyor',
       scenarioLabel: 'Yerel güvenli görev',
+      notice,
     },
     scene,
     alternatives: [scene],
   };
+}
+
+function fallbackNotice(error: unknown): string {
+  const message = error instanceof Error ? error.message : '';
+  if (message.includes('rate_limited')) return 'AI isteği geçici sınırına ulaştı. Birkaç dakika sonra yeniden dene; bu sırada genel görev kullanılabilir.';
+  if (message.includes('unauthorized') || message.includes('providers_not_configured')) return 'Canlı AI hizmeti bu ortamda yapılandırılamadı. Fotoğraf hakkında varsayım yapmadan genel görev gösteriliyor.';
+  if (message.includes('invalid_image') || message.includes('image_too_large')) return 'Fotoğraf okunamadı veya çok büyük. Daha küçük, JPEG/PNG/WebP bir görselle yeniden dene.';
+  if (message.includes('AbortError')) return 'Görsel analizi zaman aşımına uğradı. Bağlantını kontrol edip yeniden dene.';
+  return 'Canlı görsel analizi şu anda tamamlanamadı. Fotoğraftaki nesneleri uydurmamak için genel bir görev gösteriliyor.';
 }
 
 function isGatewayPayload(value: unknown): value is GatewayPayload {

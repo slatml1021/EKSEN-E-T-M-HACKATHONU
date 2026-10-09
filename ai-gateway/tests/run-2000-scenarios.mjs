@@ -72,10 +72,11 @@ async function runValidCases() {
 async function runInvalidCases() {
   for (let index = 0; index < INVALID_CASES; index += 1) {
     const body = validBody(index, 'A2');
-    if (index % 4 === 0) body.image.mimeType = 'image/svg+xml';
-    if (index % 4 === 1) body.image.base64 = '';
-    if (index % 4 === 2) body.learner.level = 'C1';
-    if (index % 4 === 3) body.learner = null;
+    if (index % 5 === 0) body.image.mimeType = 'image/svg+xml';
+    if (index % 5 === 1) body.image.base64 = '';
+    if (index % 5 === 2) body.image.base64 = 'not-valid-base64!';
+    if (index % 5 === 3) body.learner.level = 'C1';
+    if (index % 5 === 4) body.learner = null;
     const response = await postMission(body);
     executed += 1;
     assert.equal(response.status, 400, `invalid case ${index} should be rejected`);

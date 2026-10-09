@@ -63,6 +63,8 @@ export type MissionOrigin = {
   mode: 'live' | 'fallback' | 'demo';
   visionLabel: string;
   scenarioLabel: string;
+  /** A user-safe operational note; never contains provider keys or raw media. */
+  notice?: string;
 };
 
 export type PhotoMission = {

@@ -176,7 +176,7 @@ async function createScenarioSetWithGemini(analysis, learner) {
   }
   const text = payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? '').join('') ?? '';
   const result = parseJson(text, 'scenario_invalid_response');
-  if (!isScenarioSet(result)) throw new ProviderError('scenario_invalid_response');
+  if (!isScenarioSet(result) || !isSafeScenarioSet(result)) throw new ProviderError('scenario_invalid_response');
   return {
     scenarios: result.scenarios,
     recommendedIndex: result.recommendedIndex,
@@ -213,11 +213,26 @@ function validateInput(body) {
   const image = body?.image;
   const learner = body?.learner;
   if (!image || typeof image.base64 !== 'string' || !['image/jpeg', 'image/png', 'image/webp'].includes(image.mimeType)) throw new InputError('invalid_image');
+  if (!isBase64(image.base64)) throw new InputError('invalid_image');
   const imageBytes = Buffer.from(image.base64, 'base64');
-  if (imageBytes.length === 0) throw new InputError('invalid_image');
+  if (imageBytes.length === 0 || !hasExpectedImageSignature(imageBytes, image.mimeType)) throw new InputError('invalid_image');
   if (imageBytes.length > MAX_IMAGE_BYTES) throw new InputError('image_too_large');
-  if (!learner || !['A2', 'B1'].includes(learner.level) || typeof learner.twin !== 'object') throw new InputError('invalid_learner');
+  if (!learner || !['A2', 'B1'].includes(learner.level) || !isTwin(learner.twin)) throw new InputError('invalid_learner');
   return { image, learner };
+}
+
+function isBase64(value) { return value.length > 0 && value.length % 4 === 0 && /^[A-Za-z0-9+/]+={0,2}$/.test(value); }
+
+function hasExpectedImageSignature(bytes, mimeType) {
+  if (mimeType === 'image/png') return bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex'));
+  if (mimeType === 'image/jpeg') return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  if (mimeType === 'image/webp') return bytes.length >= 12 && bytes.subarray(0, 4).toString('ascii') === 'RIFF' && bytes.subarray(8, 12).toString('ascii') === 'WEBP';
+  return false;
+}
+
+function isTwin(value) {
+  return value && typeof value === 'object' && ['directness', 'warmth', 'humour']
+    .every((key) => Number.isFinite(value[key]) && value[key] >= 0 && value[key] <= 100);
 }
 
 function isVisionAnalysis(value) {
@@ -233,6 +248,13 @@ function isMission(value) {
 function isScenarioSet(value) {
   return value && Number.isInteger(value.recommendedIndex) && value.recommendedIndex >= 0 && value.recommendedIndex < 3
     && Array.isArray(value.scenarios) && value.scenarios.length === 3 && value.scenarios.every(isMission);
+}
+
+/** Reject unsafe or unusably empty generated lessons before they reach a learner. */
+function isSafeScenarioSet(value) {
+  const text = value.scenarios.flatMap((scenario) => [scenario.title, scenario.place, scenario.mission, scenario.objective, scenario.partner, scenario.opening, scenario.phrase.en, scenario.phrase.tr, scenario.phrase.context]).join(' ').toLocaleLowerCase('en-US');
+  const blocked = /\b(kill yourself|self-harm|suicide|sexual assault|hate speech)\b/;
+  return !blocked.test(text) && value.scenarios.every((scenario) => scenario.opening.trim().length >= 3 && scenario.phrase.en.trim().length >= 3 && scenario.phrase.tr.trim().length >= 3);
 }
 
 function missionForResponse(mission, analysis, requestId, index) {
