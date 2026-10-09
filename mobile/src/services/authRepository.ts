@@ -2,6 +2,7 @@ import Storage from 'expo-sqlite/kv-store';
 import type { LocalUser } from '../domain/types';
 
 const USER_KEY = 'lifelens.local-user.v1';
+const SESSION_KEY = 'lifelens.local-session.v1';
 
 /**
  * Hackathon-only local account store. It deliberately has no network path;
@@ -21,6 +22,25 @@ export async function loadLocalUser(): Promise<LocalUser | null> {
 
 export async function saveLocalUser(user: LocalUser): Promise<void> {
   await Storage.setItem(USER_KEY, JSON.stringify({ ...user, email: user.email.toLocaleLowerCase('en-US') }));
+  await Storage.setItem(SESSION_KEY, 'active');
+}
+
+/** Returns an account only when the learner has an active local session. */
+export async function loadActiveLocalUser(): Promise<LocalUser | null> {
+  try {
+    if (await Storage.getItem(SESSION_KEY) !== 'active') return null;
+    return await loadLocalUser();
+  } catch {
+    return null;
+  }
+}
+
+export async function markLocalSessionActive(): Promise<void> {
+  await Storage.setItem(SESSION_KEY, 'active');
+}
+
+export async function clearLocalSession(): Promise<void> {
+  await Storage.removeItem(SESSION_KEY);
 }
 
 export function isMatchingLocalUser(user: LocalUser, email: string, password: string): boolean {
