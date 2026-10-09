@@ -36,6 +36,10 @@ EXPO_PUBLIC_LIFELENS_API_URL=https://your-gateway.example.com
 
 Ham fotoğraf hiçbir dosyaya, loga veya veritabanına yazılmaz. Uygulama gateway'e erişemediğinde mobil uygulama bunu açıkça belirten, fotoğraftaki nesneleri uydurmayan bir yerel görev gösterir.
 
+## Test paketi
+
+`npm run test:2000`, internet veya Gemini anahtarı kullanmadan **tam 2.000** yerel HTTP senaryosu koşturur. Paket; farklı sentetik PNG'lerle A2/B1 görev üretimini, üç senaryo sözleşmesini, seçili senaryo eşleşmesini, yetkilendirme kontrolünü, hatalı medya/öğrenen isteklerini ve bilinmeyen uç noktaları kapsar. Test sağlayıcısı yalnızca `LIFELENS_TEST_MODE=1` ile başlar; normal çalıştırmada hiçbir zaman devreye girmez.
+
 ## Yayına alma notu
 
 Hackathon için paylaşımlı `LIFELENS_API_TOKEN` seçeneği vardır. Üretimde bunun yerine kullanıcı oturumunun doğrulanması, kalıcı oran sınırlama ve merkezi denetim kaydı eklenmelidir.

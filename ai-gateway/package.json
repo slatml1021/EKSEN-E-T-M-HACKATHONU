@@ -9,6 +9,7 @@
   "scripts": {
     "start": "node server.mjs",
     "dev": "node --env-file=.env server.mjs",
-    "check": "node --check server.mjs"
+    "check": "node --check server.mjs",
+    "test:2000": "node tests/run-2000-scenarios.mjs"
   }
 }

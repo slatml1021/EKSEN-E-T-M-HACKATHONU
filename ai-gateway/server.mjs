@@ -5,7 +5,11 @@ const PORT = Number(process.env.PORT ?? 8787);
 const GEMINI_REQUEST_TIMEOUT_MS = Number(process.env.GEMINI_REQUEST_TIMEOUT_MS ?? 45_000);
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_REQUEST_BYTES = 8 * 1024 * 1024;
-const RATE_LIMIT = { count: 12, windowMs: 10 * 60 * 1000 };
+const TEST_MODE = process.env.LIFELENS_TEST_MODE === '1';
+const RATE_LIMIT = {
+  count: Number(process.env.LIFELENS_RATE_LIMIT_COUNT ?? 12),
+  windowMs: Number(process.env.LIFELENS_RATE_LIMIT_WINDOW_MS ?? 10 * 60 * 1000),
+};
 const rateBuckets = new Map();
 
 const VISION_SCHEMA = {
@@ -109,6 +113,7 @@ createServer(async (request, response) => {
 }).listen(PORT, () => console.log(`LifeLens AI gateway listening on :${PORT}`));
 
 async function analyzeWithGemini(image) {
+  if (TEST_MODE) return mockVisionAnalysis(image);
   const primaryModel = process.env.GEMINI_VISION_MODEL ?? 'gemini-flash-latest';
   const fallbackModel = process.env.GEMINI_VISION_FALLBACK_MODEL ?? 'gemini-flash-lite-latest';
   const request = {
@@ -139,6 +144,7 @@ async function analyzeWithGemini(image) {
  * 2.5 Flash-Lite receives only that structured analysis, never the raw image.
  */
 async function createScenarioSetWithGemini(analysis, learner) {
+  if (TEST_MODE) return mockScenarioSet(analysis, learner);
   const primaryModel = process.env.GEMINI_SCENARIO_MODEL ?? 'gemini-2.5-flash-lite';
   const fallbackModel = process.env.GEMINI_SCENARIO_FALLBACK_MODEL ?? 'gemini-3.5-flash-lite';
   const prompt = {
@@ -207,7 +213,9 @@ function validateInput(body) {
   const image = body?.image;
   const learner = body?.learner;
   if (!image || typeof image.base64 !== 'string' || !['image/jpeg', 'image/png', 'image/webp'].includes(image.mimeType)) throw new InputError('invalid_image');
-  if (Buffer.byteLength(image.base64, 'base64') > MAX_IMAGE_BYTES) throw new InputError('image_too_large');
+  const imageBytes = Buffer.from(image.base64, 'base64');
+  if (imageBytes.length === 0) throw new InputError('invalid_image');
+  if (imageBytes.length > MAX_IMAGE_BYTES) throw new InputError('image_too_large');
   if (!learner || !['A2', 'B1'].includes(learner.level) || typeof learner.twin !== 'object') throw new InputError('invalid_learner');
   return { image, learner };
 }
@@ -239,6 +247,63 @@ function missionForResponse(mission, analysis, requestId, index) {
     ...mission,
     phrase: { id: `phrase-${requestId.slice(0, 8)}-${index + 1}`, used: false, ...mission.phrase },
   };
+}
+
+/**
+ * Test-only deterministic provider substitute. It is enabled exclusively by
+ * LIFELENS_TEST_MODE=1 so the 2,000-case suite exercises the real HTTP
+ * pipeline without spending Gemini quota or sending generated test media.
+ */
+function mockVisionAnalysis(image) {
+  const seed = stableHash(image.base64);
+  const contexts = [
+    { environment: 'çalışma alanı', object: 'dizüstü bilgisayar', related: 'şarj kablosu' },
+    { environment: 'kafe masası', object: 'kahve bardağı', related: 'menü' },
+    { environment: 'toplantı alanı', object: 'not defteri', related: 'kalem' },
+    { environment: 'mutfak tezgâhı', object: 'su şişesi', related: 'bardak' },
+  ];
+  const context = contexts[seed % contexts.length];
+  return {
+    provider: 'gemini',
+    model: 'test-double',
+    environment: context.environment,
+    confidence: 72 + (seed % 25),
+    objects: [
+      { label: context.object, confidence: 84 + (seed % 12), visibleEvidence: 'Test görselindeki ayırt edici renk/piksel dizisi.' },
+      { label: context.related, confidence: 70 + (seed % 20), visibleEvidence: 'Test görselindeki eşlik eden renk/piksel dizisi.' },
+    ],
+    observations: [`${context.object} ile ${context.related} aynı günlük yaşam bağlamında test edildi.`],
+    relationships: [`${context.object}, ${context.related} ile ilişkilendirildi.`],
+    uncertainties: ['Test çiftinde görünmeyen kişiler veya olaylar kesin bilgi olarak üretilmez.'],
+  };
+}
+
+function mockScenarioSet(analysis, learner) {
+  const subject = analysis.objects[0]?.label ?? 'nesne';
+  const simple = learner.level === 'A2';
+  const actions = ['Ask for help', 'Make a practical request', 'Solve a small problem'];
+  const places = ['Shared space', 'Cafe corner', 'Community desk'];
+  const scenarios = actions.map((mission, index) => ({
+    title: `${subject} · ${index + 1}. rota`,
+    place: places[index],
+    mission,
+    objective: `${subject} ile bağlantılı günlük bir durumu kısa ve anlaşılır biçimde yönet.`,
+    partner: index === 0 ? 'Mina · helper' : index === 1 ? 'Emre · barista' : 'Deniz · colleague',
+    opening: simple ? 'Hi! Can I help you?' : 'Hi! What would you like to sort out today?',
+    phrase: simple
+      ? { en: 'Can I use this, please?', tr: 'Bunu kullanabilir miyim, lütfen?', context: `${subject} · A2 test` }
+      : { en: 'Could you point me in the right direction with this?', tr: 'Bununla ilgili beni doğru yöne yönlendirebilir misin?', context: `${subject} · B1 test` },
+  }));
+  return { scenarios, recommendedIndex: stableHash(`${analysis.environment}:${learner.level}`) % scenarios.length, label: 'Test Scenario Agent · 3 seçenek' };
+}
+
+function stableHash(value) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
 }
 
 function parseJson(text, code) {
