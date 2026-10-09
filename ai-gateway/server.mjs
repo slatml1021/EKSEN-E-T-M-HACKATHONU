@@ -217,7 +217,7 @@ function validateInput(body) {
   const imageBytes = Buffer.from(image.base64, 'base64');
   if (imageBytes.length === 0 || !hasExpectedImageSignature(imageBytes, image.mimeType)) throw new InputError('invalid_image');
   if (imageBytes.length > MAX_IMAGE_BYTES) throw new InputError('image_too_large');
-  if (!learner || !['A2', 'B1'].includes(learner.level) || !isTwin(learner.twin)) throw new InputError('invalid_learner');
+  if (!learner || !['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].includes(learner.level) || !isTwin(learner.twin)) throw new InputError('invalid_learner');
   return { image, learner };
 }
 
@@ -302,7 +302,6 @@ function mockVisionAnalysis(image) {
 
 function mockScenarioSet(analysis, learner) {
   const subject = analysis.objects[0]?.label ?? 'nesne';
-  const simple = learner.level === 'A2';
   const actions = ['Ask for help', 'Make a practical request', 'Solve a small problem'];
   const places = ['Shared space', 'Cafe corner', 'Community desk'];
   const scenarios = actions.map((mission, index) => ({
@@ -311,12 +310,32 @@ function mockScenarioSet(analysis, learner) {
     mission,
     objective: `${subject} ile bağlantılı günlük bir durumu kısa ve anlaşılır biçimde yönet.`,
     partner: index === 0 ? 'Mina · helper' : index === 1 ? 'Emre · barista' : 'Deniz · colleague',
-    opening: simple ? 'Hi! Can I help you?' : 'Hi! What would you like to sort out today?',
-    phrase: simple
-      ? { en: 'Can I use this, please?', tr: 'Bunu kullanabilir miyim, lütfen?', context: `${subject} · A2 test` }
-      : { en: 'Could you point me in the right direction with this?', tr: 'Bununla ilgili beni doğru yöne yönlendirebilir misin?', context: `${subject} · B1 test` },
+    opening: openingForLevel(learner.level),
+    phrase: phraseForLevel(learner.level, subject),
   }));
   return { scenarios, recommendedIndex: stableHash(`${analysis.environment}:${learner.level}`) % scenarios.length, label: 'Test Scenario Agent · 3 seçenek' };
+}
+
+function openingForLevel(level) {
+  if (level === 'A1') return 'Hi! Can I help you?';
+  if (level === 'A2') return 'Hello! What do you need?';
+  if (level === 'B1') return 'Hi! What would you like to sort out today?';
+  if (level === 'B2') return 'Hello. What can we work out together?';
+  if (level === 'C1') return 'Hi. How would you like to handle this situation?';
+  return 'Welcome. What outcome would be most useful for you today?';
+}
+
+function phraseForLevel(level, subject) {
+  const phrases = {
+    A1: { en: 'Can I use this, please?', tr: 'Bunu kullanabilir miyim, lütfen?' },
+    A2: { en: 'Can I use this for a moment, please?', tr: 'Bunu kısa bir süre kullanabilir miyim, lütfen?' },
+    B1: { en: 'Could you point me in the right direction with this?', tr: 'Bununla ilgili beni doğru yöne yönlendirebilir misin?' },
+    B2: { en: 'Could you help me find the most practical way to deal with this?', tr: 'Bununla başa çıkmanın en pratik yolunu bulmama yardım eder misin?' },
+    C1: { en: 'Would you be able to advise me on the best way to handle this?', tr: 'Bunu ele almanın en iyi yolu konusunda bana tavsiyede bulunabilir misin?' },
+    C2: { en: 'Could you clarify the most effective way to resolve this situation?', tr: 'Bu durumu çözmenin en etkili yolunu netleştirebilir misin?' },
+  };
+  const phrase = phrases[level] ?? phrases.B1;
+  return { ...phrase, context: `${subject} · ${level} test` };
 }
 
 function stableHash(value) {

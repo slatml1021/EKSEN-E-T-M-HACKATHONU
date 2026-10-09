@@ -6,7 +6,7 @@ LifeLens, kullanıcının kendi çevresindeki fotoğrafları İngilizce konuşma
 
 1. Kullanıcı kamera, galeri veya önceden hazırlanmış bağlamlardan birini seçer.
 2. **Gemini Vision**, görseldeki yalnızca görünür nesneleri, ilişkileri, kanıtları ve belirsizlikleri yapılandırılmış biçimde çıkarır.
-3. **Scenario AI**, Gemini analizini (fotoğrafın kendisini değil) kullanarak A2/B1 seviyesine ve İngilizce İkizi profiline uygun, fotoğraftan daha geniş ama bağlama bağlı bir günlük yaşam senaryosu üretir.
+3. **Scenario AI**, Gemini analizini (fotoğrafın kendisini değil) kullanarak A1–C2 seviyesine ve İngilizce İkizi profiline uygun, fotoğraftan daha geniş ama bağlama bağlı bir günlük yaşam senaryosu üretir.
 4. Kullanıcı metin üzerinden yapay zekâ konuşma partnerine yanıt verir.
 5. Geri bildirim; doğruluk, doğallık ve **İngilizce İkizi** ile uyum katmanlarına ayrılır.
 6. Kullanıcı kişiselleştirilmiş ifadeyi kitaplığına kaydeder ve ilerlemesi ana ekrana yansır.

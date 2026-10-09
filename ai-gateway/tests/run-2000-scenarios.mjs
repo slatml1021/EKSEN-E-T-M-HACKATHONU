@@ -41,7 +41,7 @@ try {
     ok: true,
     executed,
     breakdown: {
-      validA2AndB1: VALID_CASES,
+      validA1ToC2: VALID_CASES,
       malformedInput: INVALID_CASES,
       authentication: UNAUTHORIZED_CASES,
       routeAndMethod: ROUTE_CASES,
@@ -53,7 +53,7 @@ try {
 
 async function runValidCases() {
   for (let index = 0; index < VALID_CASES; index += 1) {
-    const level = index % 2 === 0 ? 'A2' : 'B1';
+    const level = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'][index % 6];
     const response = await postMission(validBody(index, level));
     executed += 1;
     assert.equal(response.status, 200, `valid case ${index} should succeed`);
@@ -64,8 +64,12 @@ async function runValidCases() {
     assert.ok(payload.alternatives.some((scenario) => scenario.id === payload.mission.id));
     assert.ok(payload.analysis.objects.length >= 1);
     assert.ok(payload.mission.phrase.en.length > 4);
-    if (level === 'A2') assert.match(payload.mission.phrase.en, /^Can I /);
-    if (level === 'B1') assert.match(payload.mission.phrase.en, /^Could you /);
+    if (level === 'A1') assert.match(payload.mission.phrase.en, /^Can I use this, please\?$/);
+    if (level === 'A2') assert.match(payload.mission.phrase.en, /^Can I use this for a moment, please\?$/);
+    if (level === 'B1') assert.match(payload.mission.phrase.en, /^Could you point me/);
+    if (level === 'B2') assert.match(payload.mission.phrase.en, /^Could you help me/);
+    if (level === 'C1') assert.match(payload.mission.phrase.en, /^Would you be able to advise me/);
+    if (level === 'C2') assert.match(payload.mission.phrase.en, /^Could you clarify/);
   }
 }
 
@@ -75,7 +79,7 @@ async function runInvalidCases() {
     if (index % 5 === 0) body.image.mimeType = 'image/svg+xml';
     if (index % 5 === 1) body.image.base64 = '';
     if (index % 5 === 2) body.image.base64 = 'not-valid-base64!';
-    if (index % 5 === 3) body.learner.level = 'C1';
+    if (index % 5 === 3) body.learner.level = 'C3';
     if (index % 5 === 4) body.learner = null;
     const response = await postMission(body);
     executed += 1;

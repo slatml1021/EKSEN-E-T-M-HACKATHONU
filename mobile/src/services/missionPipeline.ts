@@ -1,4 +1,4 @@
-import type { MissionOrigin, PhotoMission, Scene, Twin, VisionAnalysis } from '../domain/types';
+import type { LearnerLevel, MissionOrigin, PhotoMission, Scene, Twin, VisionAnalysis } from '../domain/types';
 
 type ImageInput = {
   base64: string;
@@ -7,7 +7,7 @@ type ImageInput = {
 
 export type PhotoMissionInput = {
   image: ImageInput;
-  level: 'A2' | 'B1';
+  level: LearnerLevel;
   twin: Twin;
 };
 

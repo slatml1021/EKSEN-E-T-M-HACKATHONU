@@ -1,6 +1,7 @@
 export type Tab = 'home' | 'studio' | 'library' | 'twin' | 'profile';
 export type Stage = 'understand' | 'mission' | 'speak' | 'feedback';
 export type SceneId = 'desk' | 'jury' | 'cafe';
+export type LearnerLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
 
 export type Chat = {
   id: string;
@@ -97,7 +98,7 @@ export type LearningSnapshot = {
   schemaVersion: 1;
   phrases: Phrase[];
   twin: Twin;
-  level: 'A2' | 'B1';
+  level: LearnerLevel;
   privacy: boolean;
   completed: number;
   history: MissionRecord[];

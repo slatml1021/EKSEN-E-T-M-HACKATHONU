@@ -24,7 +24,7 @@ Fotoğraf (yalnızca izin açıksa) ──► Gemini Vision
 | --- | --- | --- |
 | Görsel girdi | MIME, Base64, dosya imzası ve 5 MB sınırı gateway'de doğrulanır. | Sahte/bozuk veya gereksiz büyük içerik sağlayıcıya gitmez. |
 | Görsel anlama | Vision yalnızca görünür kanıt, ilişki ve belirsizlik döndürür. | Modelin görselde olmayan bir olayı gerçek gibi sunma riski azalır. |
-| Senaryo | İkinci model ham fotoğrafı değil yapılandırılmış analizi; A2/B1 ve ton tercihlerini alır. Tam üç seçenek döndürür. | Nesneyle bağlantılı fakat genişletilmiş görev üretir; gizlilik yüzeyini küçültür. |
+| Senaryo | İkinci model ham fotoğrafı değil yapılandırılmış analizi; A1–C2 ve ton tercihlerini alır. Tam üç seçenek döndürür. | Nesneyle bağlantılı fakat genişletilmiş görev üretir; gizlilik yüzeyini küçültür. |
 | Güvenlik | Boş/uygunsuz senaryo alanları ve açık zararlı ifadeler kullanıcıya ulaşmadan reddedilir. | Öğrenme içeriğinin kullanılabilirliğini korur. |
 | Dil geri bildirimi | Yerel motor yalnızca açık, tanımlı dilbilgisi kalıplarını düzeltir; üslup alternatifini "yanlış" diye etiketlemez. | FR-42: doğru bir ifadeyi yalnızca daha doğal bir seçenek var diye yanlış saymaz. |
 | İkiz profili | Türkçe örnekten cümle uzunluğu, doğrudanlık/nezaket/mizah işaretleri tahmin edilir; kullanıcı her değeri değiştirebilir. | Psikolojik kişilik iddiası yerine dil tercihi sunar. |
@@ -36,7 +36,7 @@ Fotoğraf (yalnızca izin açıksa) ──► Gemini Vision
 | Grup | Durum | MVP karşılığı / sınır |
 | --- | --- | --- |
 | FR-01–06 Kullanıcı yönetimi | Sonraki sürüm | Yerel demo profili vardır; gerçek kayıt, oturum, hesap silme ve sunucu hesabı yoktur. |
-| FR-07–10 Seviye | Uygulandı | Kullanıcı A2/B1 seçer; gateway senaryo istemine seviyeyi iletir. A1/B2 kapsam dışıdır. |
+| FR-07–10 Seviye | Uygulandı | Kullanıcı A1, A2, B1, B2, C1 veya C2 seçer; gateway senaryo istemine seviyeyi iletir. |
 | FR-11 Uyarlanabilir zorluk | Kısmi | Görev sonucu yerelde kaydedilir; otomatik seviye yükseltme algoritması sonraki sürümdedir. |
 | FR-12–20 Snap & Speak | Uygulandı | Kamera/galeri, Gemini Vision, görünür kanıt, üç geniş senaryo, seçim, yazılı görev ve ifade eşleştirmesi vardır. Sesli yanıt FR-31–32 kapsamındadır. |
 | FR-21–26 İngilizce İkizim | Uygulandı | Türkçe metin örneği, şeffaf işaretler, düzenlenebilir üç ton değeri ve tona uygun alternatif vardır. |
@@ -58,9 +58,9 @@ Fotoğraf (yalnızca izin açıksa) ──► Gemini Vision
 
 ## Doğrulama kanıtı
 
-- `ai-gateway`: sözdizimi denetimi ve **2.000 HTTP senaryosu** (A2/B1 geçerli istek, bozuk görsel, yetkisiz istek, hatalı rota/metot).
+- `ai-gateway`: sözdizimi denetimi ve **2.000 HTTP senaryosu** (A1–C2 geçerli istek, bozuk görsel, yetkisiz istek, hatalı rota/metot).
 - `mobile`: TypeScript, linter, web export ve Android export.
-- Canlı güvenli örnekler: iki farklı görselde Gemini Vision → ikinci senaryo çağrısı ve A2/B1 ifade üretimi.
+- Canlı güvenli örnekler: iki farklı görselde Gemini Vision → ikinci senaryo çağrısı ve seviyeye uygun ifade üretimi.
 
 ## Yayın kararı
 
