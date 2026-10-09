@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 
 const PORT = Number(process.env.PORT ?? 8787);
+const GEMINI_REQUEST_TIMEOUT_MS = Number(process.env.GEMINI_REQUEST_TIMEOUT_MS ?? 45_000);
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_REQUEST_BYTES = 8 * 1024 * 1024;
 const RATE_LIMIT = { count: 12, windowMs: 10 * 60 * 1000 };
@@ -185,7 +186,7 @@ async function parseProviderResponse(response, code) {
 
 async function callGemini(model, body, code) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 24_000);
+  const timeout = setTimeout(() => controller.abort(), GEMINI_REQUEST_TIMEOUT_MS);
   try {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
       method: 'POST',

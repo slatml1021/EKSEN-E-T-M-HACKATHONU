@@ -29,7 +29,9 @@ export async function createMissionFromPhoto(input: PhotoMissionInput): Promise<
   if (!API_URL) return localFallbackMission();
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 28_000);
+  // Both Gemini stages may be queued on the free tier. The gateway has its own
+  // per-provider timeout, so the client allows the full two-stage response.
+  const timeout = setTimeout(() => controller.abort(), 100_000);
   try {
     const response = await fetch(`${API_URL}/v1/missions/from-image`, {
       method: 'POST',
