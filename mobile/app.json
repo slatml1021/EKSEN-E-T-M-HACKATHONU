@@ -7,13 +7,25 @@
     "orientation": "portrait",
     "plugins": [
       [
+        "expo-router",
+        {
+          "headers": {
+            "Cross-Origin-Embedder-Policy": "credentialless",
+            "Cross-Origin-Opener-Policy": "same-origin"
+          }
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "cameraPermission": "LifeLens, çevrendeki nesneler üzerinden İngilizce senaryolar oluşturmak için kameranı kullanır.",
           "photosPermission": "LifeLens, seçtiğin görselden İngilizce senaryolar oluşturmak için fotoğraf arşivine erişir.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-router",
+      "expo-status-bar",
+      "expo-sqlite"
     ],
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -29,8 +41,12 @@
       },
       "predictiveBackGestureEnabled": false
     },
+    "experiments": {
+      "typedRoutes": true
+    },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
     }
   }
 }

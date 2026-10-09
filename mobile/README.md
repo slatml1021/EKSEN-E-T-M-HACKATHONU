@@ -17,6 +17,15 @@ Ana ekrandaki **Hackathon Demo Modu**, mikrofon, su şişesi, laptop ve not deft
 
 Bu sürümde kamera/galeri seçimi çalışır; senaryo üretimi, konuşma partneri ve değerlendirme katmanı güvenli, deterministik demo verisiyle çalışır. Arayüz bu katmanların gerçek görsel model ve LLM API'siyle değiştirilmesi için tasarlanmıştır; görsel analiz sonucu olduğunu iddia eden doğrulanamayan ayrıntılar üretmez.
 
+## Ürün mimarisi
+
+- **Expo Router:** Ana bölümler dosya tabanlı rotalara ayrılmıştır. Böylece Studio, Kütüphane, İkizim ve Profil ayrı ekranlar olarak büyüyebilir.
+- **Kalıcı öğrenme verisi:** Görev geçmişi, ifadeler, seviye, İkiz profili ve gizlilik tercihi cihazda kalır.
+- **AI provider sınırı:** Öğrenme motoru, offline demo motoru ile gerçek görsel model/LLM adaptörünü birbirinden ayırır.
+- **Tip güvenliği:** Öğrenme verisi, sahne, değerlendirme ve görev geçmişi merkezi olarak tanımlıdır.
+
+Detaylı teknik harita: [Architecture](docs/ARCHITECTURE.md).
+
 ## Çalıştırma
 
 ```bash
@@ -35,3 +44,4 @@ Ardından Expo Go ile QR kodu okutabilir veya `npm run ios` / `npm run android` 
 - Aranabilir, bağlam etiketli ifade kütüphanesi
 - Düzenlenebilir İngilizce İkizim ton kontrolleri
 - Life Map, ilerleme ve gizlilik tercihleri
+- Cihaz yeniden başlatılsa da korunan öğrenme özeti ve son görev kaydı
