@@ -1,58 +1,101 @@
 # LifeLens Mobile
 
-LifeLens, kullanıcının kendi çevresindeki fotoğrafları İngilizce konuşma pratiğine dönüştüren mobil MVP'dir.
+LifeLens Mobile, kullanıcının kendi fotoğrafı ve sesiyle başlayan İngilizce öğrenme MVP’sidir. iOS, Android ve web aynı Expo / React Native kaynak kodundan çalışır.
 
-## Hackathon MVP akışı
+Ana proje özeti, rakip karşılaştırması ve AI mimarisi için depo kökündeki [README](../README.md) dosyasına bakın.
 
-1. Kullanıcı kamera, galeri veya önceden hazırlanmış bağlamlardan birini seçer.
-2. **Gemini Vision**, görseldeki yalnızca görünür nesneleri, ilişkileri, kanıtları ve belirsizlikleri yapılandırılmış biçimde çıkarır.
-3. **Scenario AI**, Gemini analizini (fotoğrafın kendisini değil) kullanarak A1–C2 seviyesine ve İngilizce İkizi profiline uygun, fotoğraftan daha geniş ama bağlama bağlı bir günlük yaşam senaryosu üretir.
-4. Kullanıcı metin üzerinden yapay zekâ konuşma partnerine yanıt verir.
-5. Geri bildirim; doğruluk, doğallık ve **İngilizce İkizi** ile uyum katmanlarına ayrılır.
-6. Kullanıcı kişiselleştirilmiş ifadeyi kitaplığına kaydeder ve ilerlemesi ana ekrana yansır.
+## Uygulamadaki güncel deneyim
 
-## Jüri demosu
+### Yerel giriş
 
-Ana ekrandaki **Hackathon Demo Modu**, mikrofon, su şişesi, laptop ve not defterini içeren "Jüri Masası" bağlamını doğrudan açar. Bu akış sırasıyla *Anlama → Görev → Konuşma → Geri bildirim* adımlarını görünür biçimde gösterir. Böylece canlı sunumda gerçek bir fotoğrafa ihtiyaç kalmadan ürünün değer önerisi tekrarlanabilir.
+- Kullanıcı kayıt olur veya daha önce oluşturduğu cihaz içi hesapla giriş yapar.
+- Oturum yerelde korunur; ekran değişimlerinde kullanıcı bilgileri yeniden istenmez.
+- “Bu cihazdan çıkış yap” seçeneği oturumu kaldırır.
 
-Kamera/galeri seçimi çalışır. `EXPO_PUBLIC_LIFELENS_API_URL` tanımlıysa fotoğraf güvenli AI Gateway'e gönderilir ve iki model sıralı olarak çalışır. Gateway yoksa arayüz, fotoğraftaki nesneleri uydurmayan ve açıkça **yerel güvenli görev** olarak etiketlenen bir yedek akış gösterir. Jüri Masası ise internet gerektirmeyen, hazırlanmış demo bağlamıdır.
+### Keşfet: fotoğrafla başla
 
-## Ürün mimarisi
+- Kamera veya galeriden fotoğraf seçilir.
+- Gateway yapılandırılmışsa görsel, iki aşamalı Gemini akışına gider.
+- Demo ekranı bir kâğıt bardak için `A paper cup.` tanımını ve üç genişletilmiş İngilizce senaryoyu gösterir.
+- Altı çizili kelimeye dokunmak Türkçe karşılığını açar; hızlı çift dokunuş kelimeyi kaynak cümlesiyle birlikte Kelime Kasası’na ekler.
 
-- **Expo Router:** Ana bölümler dosya tabanlı rotalara ayrılmıştır. Böylece Studio, Kütüphane, İkizim ve Profil ayrı ekranlar olarak büyüyebilir.
-- **Kalıcı öğrenme verisi:** Görev geçmişi, ifadeler, seviye, İkiz profili ve gizlilik tercihi cihazda kalır.
-- **İki aşamalı AI sınırı:** `missionPipeline`, mobil anahtar taşımadan Gateway'e gider. Gateway önce Gemini Vision ile kanıt temelli analiz yapar, ardından bu JSON'u ikinci senaryo modeline aktarır.
-- **Tip güvenliği:** Öğrenme verisi, sahne, değerlendirme ve görev geçmişi merkezi olarak tanımlıdır.
+### Stüdyo: kayıt ve ton analizi
 
-Detaylı teknik harita: [Architecture](docs/ARCHITECTURE.md).
+- Kullanıcı cihazında ses kaydı başlatıp durdurabilir.
+- Hackathon MVP’sinde ilk kayıt aşağıdaki analiz örneğini açar:
 
-## Mobil + web: tek ürün, tek kaynak
+  ```text
+  I respectfully decline your offer.
+  Teklifinizi reddediyorum.
+  Resmiyet / Direktlik: yüksek
+  Samimiyet / Mizah: düşük
+  ```
 
-LifeLens için ayrı bir web prototipi korunmaz. `App.tsx`, Expo Router rotaları, görev akışı, ifade kütüphanesi, İngilizce İkizim ve Gemini → Scenario AI pipeline'ı Android, iOS ve web için **aynı kaynak kodundan** derlenir. Böylece bir platformda görülen görev, metin, seviye mantığı ve güvenlik davranışı diğerinde de aynıdır.
+- İkinci kayıt sıradaki örneği açar:
 
-Sadece cihazın saklama katmanı platforma göre değişir: mobilde SQLite, webde tarayıcı depolaması kullanılır. Bu teknik fark, içerik veya öğrenme geçmişinin şemasını değiştirmez. Ayrıntılı kontrol listesi: [Platform Parity](docs/PLATFORM_PARITY.md).
+  ```text
+  How y’all doin.
+  Nasılız millet.
+  Resmiyet / Direktlik: düşük
+  Samimiyet: yüksek
+  Mizah: orta-düşük
+  ```
 
-## Çalıştırma
+### Kelime Kasası ve Kelime Quiz’i
+
+- Kullanıcı, kelimeyi Türkçesi ve isteğe bağlı örnek cümlesiyle kendisi ekleyebilir.
+- Kaydedilen kelimeler, anlamları ve kaynak cümleleri birlikte görüntülenir.
+- Kelime Quiz’i kasadaki kelimeleri karıştırarak çoktan seçmeli anlam soruları üretir; yanlış cevapta doğru karşılığı gösterir.
+
+### Profil
+
+- Kullanıcı adı ve e-posta bilgisi görünür.
+- A1–C2 seviyeleri seçilebilir.
+- Fotoğraf işleme izni kullanıcı tarafından kapatılabilir.
+- “Gemini API Key’i edin” bağlantısı Google AI Studio’ya yönlendirir.
+
+## Kurulum
 
 ```bash
-npm install
-npm start
+npm ci
+npm run start
 ```
 
-Ardından Expo Go ile QR kodu okutabilir, `npm run ios` / `npm run android` komutlarını kullanabilir veya `npm run web` ile tarayıcıda açabilirsin. Yayınlanabilir web çıktısı için `npm run export:web` çalıştırılır.
+Diğer çalışma komutları:
 
-## Kapsam
+```bash
+npm run web
+npm run ios
+npm run android
+npm run export:web
+npm run lint
+```
 
-- Snap & Speak fotoğraf seçme/çekme akışı
-- Beş adımlı Mission Studio ve bağlam güveni görünümü
-- Canlı Jüri Masası demo senaryosu
-- Metin tabanlı diyalog ve üç katmanlı geri bildirim
-- Aranabilir, bağlam etiketli ifade kütüphanesi
-- Düzenlenebilir İngilizce İkizim ton kontrolleri
-- Life Map, ilerleme ve gizlilik tercihleri
-- Cihaz yeniden başlatılsa da korunan öğrenme özeti ve son görev kaydı
-- Fotoğraf → Gemini görünür bağlamı → ikinci AI ile genişletilmiş senaryo zinciri
+## Canlı AI bağlantısı
 
-## Canlı AI'ı bağlama
+Mobil uygulama yalnızca gateway URL’sini bilir. Sağlayıcı anahtarı mobilde tutulmaz.
 
-`mobile/.env.example` dosyasındaki yalnızca gateway URL'sini yerel ortam değişkenine ekleyin. Gemini ve senaryo modeli anahtarlarını mobil uygulamaya eklemeyin; [AI Gateway](../ai-gateway/README.md) bu anahtarları sunucu tarafında tutar. Google'ın Gemini API'si görseli `generateContent` isteğinde inline veri olarak alabilir; gateway bu çağrıyı kullanıcı cihazı yerine sunucudan yapar. [Gemini API dokümantasyonu](https://ai.google.dev/api/generate-content)
+```bash
+EXPO_PUBLIC_LIFELENS_API_URL=https://your-lifelens-gateway.example.com
+```
+
+Gateway kurulum ve güvenlik ayrıntıları: [AI Gateway README](../ai-gateway/README.md).
+
+Gateway ulaşılmazsa uygulama, fotoğrafta görünmeyen nesneleri iddia etmeyen güvenli bir yerel görev gösterir.
+
+## Kaynak yapısı
+
+```text
+App.tsx                              # MVP deneyimi, ekranlar ve uygulama durumu
+src/app/                             # Expo Router rotaları
+src/services/authRepository.ts       # Cihaz içi kayıt / oturum
+src/services/learningRepository*.ts  # Yerel öğrenme verisi
+src/services/missionPipeline.ts      # Gateway istemcisi ve güvenli yedek akış
+src/domain/types.ts                  # Paylaşılan veri tipleri
+```
+
+## Gizlilik
+
+- Yerel hesap, Kelime Kasası ve öğrenme ilerlemesi cihazda tutulur.
+- Fotoğraf yalnızca kullanıcı fotoğraf işleme iznini açtığında gönderilir.
+- API anahtarı, `.env` ve hassas kullanıcı verileri Git’e eklenmez.
